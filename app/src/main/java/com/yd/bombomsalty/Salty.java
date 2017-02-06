@@ -1,7 +1,8 @@
 package com.yd.bombomsalty;
 
 /**
- * Created by Yury on 31.01.2017.
+ * Created on 31.01.2017
+ @author Yury.
  */
 
 import android.os.Bundle;
@@ -13,6 +14,8 @@ import android.view.Window;
 
 public class Salty extends Activity {
 
+    private GameView mGameView;
+
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
@@ -20,7 +23,8 @@ public class Salty extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         //new View with main game background
-        setContentView(new GameView(this));
+        mGameView = new GameView(this);
+        setContentView(mGameView);
     }
 
     @Override
@@ -43,5 +47,19 @@ public class Salty extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onResume(){
+        super.onResume();
+
+        mGameView.resume();
+    }
+
+    @Override
+    public void onStop(){
+        super.onStop();
+
+        mGameView.pause();
     }
 }
