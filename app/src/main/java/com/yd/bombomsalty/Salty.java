@@ -6,6 +6,7 @@ package com.yd.bombomsalty;
  */
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.app.Activity;
@@ -14,12 +15,14 @@ import android.view.Window;
 
 public class Salty extends Activity {
 
+    private static final String LOG_TAG = "MainAct";
     private GameView mGameView;
 
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
+        Log.d(LOG_TAG, "create");
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         //new View with main game background
@@ -53,13 +56,22 @@ public class Salty extends Activity {
     public void onResume(){
         super.onResume();
 
-        mGameView.resume();
+        Log.d(LOG_TAG, "resume");
+        //mGameView.resume();
+    }
+
+    @Override
+    public void onPause(){
+        super.onPause();
+
+        Log.d(LOG_TAG, "pause");
+        //mGameView.pause();
     }
 
     @Override
     public void onStop(){
         super.onStop();
 
-        mGameView.pause();
+        Log.d(LOG_TAG, "stop");
     }
 }

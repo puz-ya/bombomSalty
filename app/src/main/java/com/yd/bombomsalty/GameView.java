@@ -18,7 +18,9 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import java.util.ArrayList;
 
-public class GameView extends SurfaceView {
+public class GameView extends SurfaceView
+    //implements Runnable
+{
 
     private static final String LOG_TAG = "GameView";
 
@@ -81,12 +83,11 @@ public class GameView extends SurfaceView {
             // Destroying surface
             public void surfaceDestroyed(SurfaceHolder holder)
             {
-                boolean retry = true;
                 gameLoopThread.setRunning(false);
-                while (retry) {
+                while (true) {
                     try {
                         gameLoopThread.join();
-                        retry = false;
+                        return;
                     } catch (InterruptedException e) {
                         Log.d(LOG_TAG, "surfaceDestroyed" + e.getMessage());
                     }
@@ -96,8 +97,10 @@ public class GameView extends SurfaceView {
             // Creating surface
             public void surfaceCreated(SurfaceHolder holder)
             {
-                gameLoopThread.setRunning(true);
-                gameLoopThread.start();
+                if (!gameLoopThread.getRunning()){
+                    gameLoopThread.setRunning(true);
+                    gameLoopThread.start();
+                }
             }
 
             // Changing surface
@@ -161,6 +164,101 @@ public class GameView extends SurfaceView {
         }
     }
 
+    protected void updateEnemies(){
+
+        float screenWidthHalf = screenWidth/ 2;
+        float screenHeightHalf = screenHeight / 2;
+
+        ArrayList projectiles = player.getProjectiles();
+        for (int i = 0; i < enemies.size(); i++) {
+            Enemy enemy = enemies.get(i);
+            enemyX = enemy.getX();
+            enemyY = enemy.getY();
+
+            boolean killed = false;
+
+            for (int j = 0; j < projectiles.size(); j++) {
+                Projectile p = (Projectile) projectiles.get(j);
+
+                //if projectile near enemy - kill them both
+                if ((p.getX() - enemyX) * (p.getX() - enemyX) + (p.getY() - enemyY) * (p.getY() - enemyY) < 10000) {
+                    //drawImage(canvas, projBM, enemyX, enemyY, enemy.getA(), screenWidth / 700);
+                    enemies.remove(i);
+                    projectiles.remove(j);
+
+                    //big bada-BOOM
+                    Boom b = new Boom(enemyX, enemyY);
+                    booms.add(b);
+                    score++;
+
+                    killed = true;
+                    if (Math.random() > 0.3) {
+                        enemyY = screenHeight * (float) Math.random();
+                        enemyX = screenWidth * (float) Math.random();
+                        if (((enemyX - screenWidthHalf) * (enemyX - screenWidthHalf) + (enemyY - screenHeightHalf) * (enemyY - screenHeightHalf)) > 8000) {
+                            Enemy ne = new Enemy(enemyX, enemyY, 40, 0, player);
+                            enemies.add(ne);
+                        }
+                    }
+                }
+            }
+            //if not killed -> update position
+            if (!killed) {
+                enemy.update(-xSpeed, -ySpeed, screenWidthHalf, screenHeightHalf);
+            }
+        }
+    }
+
+    protected void updateBooms(){
+        //update booms data
+        for (int i = 0; i < booms.size(); i++) {
+            Boom b = booms.get(i);
+            float speedBoomX = -speed * (float) Math.cos((float) playerA * RAD);
+            float speedBoomY = -speed * (float) Math.sin((float) playerA * RAD);
+            b.update(speedBoomX, speedBoomY);
+        }
+    }
+
+    protected void updateBlades(){
+
+        float screenWidthHalf = screenWidth/ 2;
+        float screenHeightHalf = screenHeight / 2;
+
+        //update blades data
+        ArrayList blades = player.getBlades();
+        for (int i = 0; i < blades.size(); i++) {
+            Blade blade = (Blade) blades.get(i);
+            float bX = blade.getX();
+            float bY = blade.getY();
+
+            //if we've been hit by blade
+            if (((bX - screenWidthHalf) * (bX - screenWidthHalf) + (bY - screenHeightHalf) * (bY - screenHeightHalf)) < 1000) {
+                blades.remove(i);
+                health -= 1;
+            } else if (bX > 0 || bY > 0) {
+                blade.update((-speed * (float) Math.cos((float) playerA * RAD)), -speed * (float) Math.sin((float) playerA * RAD));
+            } else {
+                blades.remove(i);
+            }
+        }
+    }
+
+    protected void createEnemy(){
+
+        float screenWidthHalf = screenWidth/ 2;
+        float screenHeightHalf = screenHeight / 2;
+
+        //new enemy
+        if (Math.random() > 0.95) {
+            enemyY = screenHeight * (float) Math.random();
+            enemyX = screenWidth * (float) Math.random();
+            if (((enemyX - screenWidthHalf) * (enemyX - screenWidthHalf) + (enemyY - screenHeightHalf) * (enemyY - screenHeightHalf)) > 8000) {
+                Enemy e = new Enemy(enemyX, enemyY, 40, 0, player);
+                enemies.add(e);
+            }
+        }
+    }
+
     protected void onMainDraw(Canvas canvas)
     {
         float screenWidthHalf = screenWidth/ 2;
@@ -175,80 +273,16 @@ public class GameView extends SurfaceView {
 
             updateBackground();
 
+            updateEnemies();
+
+            updateBooms();
+
+            updateBlades();
+
+            createEnemy();
+
             ArrayList projectiles = player.getProjectiles();
-            for (int i = 0; i < enemies.size(); i++) {
-                Enemy enemy = enemies.get(i);
-                enemyX = enemy.getX();
-                enemyY = enemy.getY();
-
-                boolean killed = false;
-
-                for (int j = 0; j < projectiles.size(); j++) {
-                    Projectile p = (Projectile) projectiles.get(j);
-
-                    //if projectile near enemy - kill them both
-                    if ((p.getX() - enemyX) * (p.getX() - enemyX) + (p.getY() - enemyY) * (p.getY() - enemyY) < 10000) {
-                        //drawImage(canvas, projBM, enemyX, enemyY, enemy.getA(), screenWidth / 700);
-                        enemies.remove(i);
-                        projectiles.remove(j);
-
-                        //big bada-BOOM
-                        Boom b = new Boom(enemyX, enemyY);
-                        booms.add(b);
-                        score++;
-
-                        killed = true;
-                        if (Math.random() > 0.3) {
-                            enemyY = screenHeight * (float) Math.random();
-                            enemyX = screenWidth * (float) Math.random();
-                            if (((enemyX - screenWidthHalf) * (enemyX - screenWidthHalf) + (enemyY - screenHeight / 2) * (enemyY - screenHeight / 2)) > 8000) {
-                                Enemy ne = new Enemy(enemyX, enemyY, 40, 0, player);
-                                enemies.add(ne);
-                            }
-                        }
-                    }
-                }
-                //if not killed -> update position
-                if (!killed) {
-                    enemy.update(-xSpeed, -ySpeed, screenWidthHalf, screenHeight / 2);
-                }
-            }
-
-            //update booms data
-            for (int i = 0; i < booms.size(); i++) {
-                Boom b = booms.get(i);
-                float speedBoomX = -speed * (float) Math.cos((float) playerA * RAD);
-                float speedBoomY = -speed * (float) Math.sin((float) playerA * RAD);
-                b.update(speedBoomX, speedBoomY);
-            }
-
-            //update blades data
             ArrayList blades = player.getBlades();
-            for (int i = 0; i < blades.size(); i++) {
-                Blade b = (Blade) blades.get(i);
-                float bX = b.getX();
-                float bY = b.getY();
-
-                //if we've been hit by blade
-                if (((bX - screenWidthHalf) * (bX - screenWidthHalf) + (bY - screenHeight / 2) * (bY - screenHeight / 2)) < 1000) {
-                    blades.remove(i);
-                    health -= 1;
-                } else if (bX > 0 || bY > 0) {
-                    b.update((-speed * (float) Math.cos((float) playerA * RAD)), -speed * (float) Math.sin((float) playerA * RAD));
-                } else {
-                    blades.remove(i);
-                }
-            }
-
-            //enemy thing
-            if (Math.random() > 0.95) {
-                enemyY = screenHeight * (float) Math.random();
-                enemyX = screenWidth * (float) Math.random();
-                if (((enemyX - screenWidthHalf) * (enemyX - screenWidthHalf) + (enemyY - screenHeight / 2) * (enemyY - screenHeight / 2)) > 8000) {
-                    Enemy e = new Enemy(enemyX, enemyY, 40, 0, player);
-                    enemies.add(e);
-                }
-            }
 
             screenWidth = getWidth();
             screenHeight = getHeight();
@@ -272,7 +306,7 @@ public class GameView extends SurfaceView {
 
             drawImage(canvas, rulerBM, screenWidth - 100, screenHeight - 100, 0, screenWidth / 3000);
             //drawImage(canvas, rulerBM, 100, screenHeight - 100, 0, screenWidth / 3000);
-            drawImage(canvas, playerBM, screenWidthHalf, screenHeight / 2, playerA, screenWidth / 5000);
+            drawImage(canvas, playerBM, screenWidthHalf, screenHeightHalf, playerA, screenWidth / 5000);
 
             for (int i = 0; i < projectiles.size(); i++) {
                 Projectile p = (Projectile) projectiles.get(i);
@@ -295,7 +329,7 @@ public class GameView extends SurfaceView {
             }
 
 
-            drawImage(canvas, turretBM, screenWidthHalf, screenHeight / 2, turretA, screenWidth / 5000);
+            drawImage(canvas, turretBM, screenWidthHalf, screenHeightHalf, turretA, screenWidth / 5000);
             paint.setTextSize(40);
             paint.setColor(Color.WHITE);
 
@@ -316,7 +350,7 @@ public class GameView extends SurfaceView {
             paint.setTextSize(100);
 
             String youDied = getResources().getString(R.string.dead);
-            canvas.drawText(youDied, screenWidthHalf - paint.measureText(youDied) / 2, screenHeight / 2, paint);
+            canvas.drawText(youDied, screenWidthHalf - paint.measureText(youDied) / 2, screenHeightHalf, paint);
         }
     }
 
@@ -391,7 +425,9 @@ public class GameView extends SurfaceView {
     /** resume game, new thread */
     public void resume(){
 
-        gameLoopThread = new GameLooper(this);
+        if (gameLoopThread == null) {
+            gameLoopThread = new GameLooper(this);
+        }
         gameLoopThread.setRunning(true);
         gameLoopThread.start();
     }
